@@ -431,7 +431,7 @@ def prepare_model_and_optimizer(args, device):
 
     criterion = BertPretrainingCriterion(config.vocab_size)
 
-    return model, optimizer, lr_scheduler, checkpoint, global_step, criterion
+    return model, optimizer, lr_scheduler, checkpoint, global_step, criterion, config
 
 def take_optimizer_step(args, optimizer, model, overflow_buf, global_step):
 
@@ -508,7 +508,7 @@ def main():
     dllogger.log(step="PARAMETER", data={"Config": [str(args)]})
 
     # Prepare optimizer
-    model, optimizer, lr_scheduler, checkpoint, global_step, criterion = prepare_model_and_optimizer(args, device)
+    model, optimizer, lr_scheduler, checkpoint, global_step, criterion, config = prepare_model_and_optimizer(args, device)
 
     if is_main_process():
         dllogger.log(step="PARAMETER", data={"SEED": args.seed})
@@ -516,7 +516,8 @@ def main():
     using_wandb = False
     if args.wandb and is_main_process():
         using_wandb = True
-        wandb.init(project='nvidia-bert', config=args)
+        config_ = {**vars(args), **vars(config)}
+        wandb.init(project='nvidia-bert', config=config_)
 
     raw_train_start = None
     if args.do_train:
@@ -656,14 +657,17 @@ def main():
                         avg_mlm_loss = average_mlm_loss / (args.log_freq * divisor)
                         avg_nsp_loss = average_nsp_loss / (args.log_freq * divisor)
                         avg_mlm_acc = average_mlm_acc / (args.log_freq * divisor)
+                        loss_scale = amp._amp_state.loss_scalers[0]._loss_scale if args.fp16 else 1
                         if is_main_process():
                             dllogger.log(step=(epoch, global_step, ), data={"average_loss": avg_loss,
                                                                             "step_loss": loss.item() * args.gradient_accumulation_steps / divisor,
                                                                             "learning_rate": optimizer.param_groups[0]['lr'],
-                                                                            "mlm_accracy": avg_mlm_acc})
+                                                                            "mlm_accracy": avg_mlm_acc,
+                                                                            "loss_scale": loss_scale})
                         if using_wandb:
+
                             wandb.log({'loss': avg_loss, 'mlm_loss': avg_mlm_loss, 'nsp_loss': avg_nsp_loss,
-                                       'mlm_accuracy': avg_mlm_acc})
+                                       'mlm_accuracy': avg_mlm_acc, 'loss_scale': loss_scale})
                         average_loss = 0.0
                         average_mlm_loss = 0.0
                         average_nsp_loss = 0.0
