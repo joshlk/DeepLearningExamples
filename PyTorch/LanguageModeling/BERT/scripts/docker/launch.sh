@@ -13,5 +13,5 @@ docker run -it --rm \
   -e LD_LIBRARY_PATH='/workspace/install/lib/' \
   -v $PWD:/workspace/bert \
   -v $PWD/results:/results \
-  -v /localdata:/localdata
+  -v /localdata:/localdata \
   bert $CMD
