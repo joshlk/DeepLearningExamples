@@ -528,6 +528,9 @@ def main():
         model.train()
         most_recent_ckpts_paths = []
         average_loss = 0.0  # averaged loss every args.log_freq steps
+        average_mlm_loss = 0.0
+        average_nsp_loss = 0.0
+        average_mlm_acc = 0.0
         epoch = 0
         training_steps = 0
 
@@ -608,6 +611,12 @@ def main():
                         mlm_loss = mlm_loss.mean()
                         nsp_loss = nsp_loss.mean()
 
+                    ## Accracy
+                    pred_mlm = prediction_scores.argmax(axis=-1)
+                    non_neg_1 = masked_lm_labels.view(-1) != -1
+                    mlm_acc = (pred_mlm.view(-1)[non_neg_1] == masked_lm_labels.view(-1)[
+                        non_neg_1]).sum().item() / non_neg_1.sum().item()
+
 
                     divisor = args.gradient_accumulation_steps
                     if args.gradient_accumulation_steps > 1:
@@ -621,15 +630,10 @@ def main():
                     else:
                         loss.backward()
                     average_loss += loss.item()
+                    average_mlm_loss += mlm_loss.item()
+                    average_nsp_loss += nsp_loss.item()
+                    average_mlm_acc += mlm_acc
 
-                    pred_mlm = prediction_scores.argmax(axis=-1)
-                    non_neg_1 = masked_lm_labels.view(-1) != -1
-                    mlm_acc = (pred_mlm.view(-1)[non_neg_1] == masked_lm_labels.view(-1)[
-                        non_neg_1]).sum().item() / non_neg_1.sum().item()
-
-                    if using_wandb:
-                        wandb.log({'loss': loss.item(), 'mlm_loss': mlm_loss, 'nsp_loss': nsp_loss,
-                                   'mlm_accuracy': mlm_acc})
 
                     if training_steps % args.gradient_accumulation_steps == 0:
                         lr_scheduler.step()  # learning rate warmup
@@ -648,12 +652,22 @@ def main():
                         if is_main_process():
                             dllogger.log(step=(epoch, global_step, ), data={"final_loss": final_loss})
                     elif training_steps % (args.log_freq * args.gradient_accumulation_steps) == 0:
+                        avg_loss = average_loss / (args.log_freq * divisor)
+                        avg_mlm_loss = average_mlm_loss / (args.log_freq * divisor)
+                        avg_nsp_loss = average_nsp_loss / (args.log_freq * divisor)
+                        avg_mlm_acc = average_mlm_acc / (args.log_freq * divisor)
                         if is_main_process():
-                            dllogger.log(step=(epoch, global_step, ), data={"average_loss": average_loss / (args.log_freq * divisor),
+                            dllogger.log(step=(epoch, global_step, ), data={"average_loss": avg_loss,
                                                                             "step_loss": loss.item() * args.gradient_accumulation_steps / divisor,
                                                                             "learning_rate": optimizer.param_groups[0]['lr'],
                                                                             "mlm_accracy": mlm_acc})
-                        average_loss = 0
+                        if using_wandb:
+                            wandb.log({'loss': avg_loss, 'mlm_loss': avg_mlm_loss, 'nsp_loss': avg_nsp_loss,
+                                       'mlm_accuracy': avg_mlm_acc})
+                        average_loss = 0.0
+                        average_mlm_loss = 0.0
+                        average_nsp_loss = 0.0
+                        average_mlm_acc = 0.0
 
 
                     if global_step >= args.steps_this_run or training_steps % (
