@@ -624,12 +624,12 @@ def main():
 
                     pred_mlm = prediction_scores.argmax(axis=-1)
                     non_neg_1 = masked_lm_labels.view(-1) != -1
-                    acc = (pred_mlm.view(-1)[non_neg_1] == masked_lm_labels.view(-1)[
-                        non_neg_1]).sum() / non_neg_1.sum()
+                    mlm_acc = (pred_mlm.view(-1)[non_neg_1] == masked_lm_labels.view(-1)[
+                        non_neg_1]).sum().item() / non_neg_1.sum().item()
 
                     if using_wandb:
                         wandb.log({'loss': loss.item(), 'mlm_loss': mlm_loss, 'nsp_loss': nsp_loss,
-                                   'mlm_accuracy': acc.item()})
+                                   'mlm_accuracy': mlm_acc})
 
                     if training_steps % args.gradient_accumulation_steps == 0:
                         lr_scheduler.step()  # learning rate warmup
@@ -651,7 +651,8 @@ def main():
                         if is_main_process():
                             dllogger.log(step=(epoch, global_step, ), data={"average_loss": average_loss / (args.log_freq * divisor),
                                                                             "step_loss": loss.item() * args.gradient_accumulation_steps / divisor,
-                                                                            "learning_rate": optimizer.param_groups[0]['lr']})
+                                                                            "learning_rate": optimizer.param_groups[0]['lr'],
+                                                                            "mlm_accracy": mlm_acc})
                         average_loss = 0
 
 
