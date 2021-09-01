@@ -660,7 +660,7 @@ def main():
                             dllogger.log(step=(epoch, global_step, ), data={"average_loss": avg_loss,
                                                                             "step_loss": loss.item() * args.gradient_accumulation_steps / divisor,
                                                                             "learning_rate": optimizer.param_groups[0]['lr'],
-                                                                            "mlm_accracy": mlm_acc})
+                                                                            "mlm_accracy": avg_mlm_acc})
                         if using_wandb:
                             wandb.log({'loss': avg_loss, 'mlm_loss': avg_mlm_loss, 'nsp_loss': avg_nsp_loss,
                                        'mlm_accuracy': avg_mlm_acc})
