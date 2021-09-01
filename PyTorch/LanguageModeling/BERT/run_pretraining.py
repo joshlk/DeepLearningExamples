@@ -53,6 +53,7 @@ from apex.amp import _amp_state
 
 import dllogger
 from concurrent.futures import ProcessPoolExecutor
+import wandb
 
 torch._C._jit_set_profiling_mode(False)
 torch._C._jit_set_profiling_executor(False)
@@ -278,6 +279,10 @@ def parse_arguments():
                         help='Disable tqdm progress bar')
     parser.add_argument('--steps_this_run', type=int, default=-1,
                         help='If provided, only run this many steps before exiting')
+    parser.add_argument('--wandb',
+                        default=False,
+                        action='store_true',
+                        help='Enable W&B (only works from rank 0 device)')
 
     args = parser.parse_args()
     args.fp16 = args.fp16 or args.amp
@@ -508,6 +513,11 @@ def main():
     if is_main_process():
         dllogger.log(step="PARAMETER", data={"SEED": args.seed})
 
+    using_wandb = False
+    if args.wandb and is_main_process():
+        using_wandb = True
+        wandb.init(project='nvidia-bert')
+
     raw_train_start = None
     if args.do_train:
         if is_main_process():
@@ -595,6 +605,7 @@ def main():
                     if args.n_gpu > 1:
                         loss = loss.mean()  # mean() to average on multi-gpu.
 
+
                     divisor = args.gradient_accumulation_steps
                     if args.gradient_accumulation_steps > 1:
                         if not args.allreduce_post_accumulation:
@@ -607,6 +618,9 @@ def main():
                     else:
                         loss.backward()
                     average_loss += loss.item()
+
+                    if using_wandb:
+                        wandb.log({'loss': loss.item()})
 
                     if training_steps % args.gradient_accumulation_steps == 0:
                         lr_scheduler.step()  # learning rate warmup
