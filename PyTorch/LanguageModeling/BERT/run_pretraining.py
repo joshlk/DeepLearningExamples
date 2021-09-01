@@ -516,7 +516,7 @@ def main():
     using_wandb = False
     if args.wandb and is_main_process():
         using_wandb = True
-        wandb.init(project='nvidia-bert')
+        wandb.init(project='nvidia-bert', config=args)
 
     raw_train_start = None
     if args.do_train:
