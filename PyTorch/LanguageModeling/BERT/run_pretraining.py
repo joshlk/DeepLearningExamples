@@ -130,7 +130,7 @@ class BertPretrainingCriterion(torch.nn.Module):
         masked_lm_loss = self.loss_fn(prediction_scores.view(-1, self.vocab_size), masked_lm_labels.view(-1))
         next_sentence_loss = self.loss_fn(seq_relationship_score.view(-1, 2), next_sentence_labels.view(-1))
         total_loss = masked_lm_loss + next_sentence_loss
-        return total_loss
+        return total_loss, masked_lm_loss, next_sentence_loss
 
 
 def parse_arguments():
@@ -601,9 +601,12 @@ def main():
                     batch = [t.to(device) for t in batch]
                     input_ids, segment_ids, input_mask, masked_lm_labels, next_sentence_labels = batch
                     prediction_scores, seq_relationship_score = model(input_ids=input_ids, token_type_ids=segment_ids, attention_mask=input_mask)
-                    loss = criterion(prediction_scores, seq_relationship_score, masked_lm_labels, next_sentence_labels)
+                    loss, mlm_loss, nsp_loss = criterion(prediction_scores, seq_relationship_score, masked_lm_labels, next_sentence_labels)
+
                     if args.n_gpu > 1:
                         loss = loss.mean()  # mean() to average on multi-gpu.
+                        mlm_loss = mlm_loss.mean()
+                        nsp_loss = nsp_loss.mean()
 
 
                     divisor = args.gradient_accumulation_steps
@@ -619,8 +622,14 @@ def main():
                         loss.backward()
                     average_loss += loss.item()
 
+                    pred_mlm = prediction_scores.argmax(axis=-1)
+                    non_neg_1 = masked_lm_labels.view(-1) != -1
+                    acc = (pred_mlm.view(-1)[non_neg_1] == masked_lm_labels.view(-1)[
+                        non_neg_1]).sum() / non_neg_1.sum()
+
                     if using_wandb:
-                        wandb.log({'loss': loss.item()})
+                        wandb.log({'loss': loss.item(), 'mlm_loss': mlm_loss, 'nsp_loss': nsp_loss,
+                                   'mlm_accuracy': acc.item()})
 
                     if training_steps % args.gradient_accumulation_steps == 0:
                         lr_scheduler.step()  # learning rate warmup
