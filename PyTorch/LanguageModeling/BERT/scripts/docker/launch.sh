@@ -14,4 +14,5 @@ docker run -it --rm \
   -v $PWD:/workspace/bert \
   -v $PWD/results:/results \
   -v /localdata:/localdata \
+  -v ~/.netrc:/root/.netrc \
   bert $CMD
