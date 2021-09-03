@@ -657,7 +657,7 @@ def main():
                         avg_mlm_loss = average_mlm_loss / (args.log_freq * divisor)
                         avg_nsp_loss = average_nsp_loss / (args.log_freq * divisor)
                         avg_mlm_acc = average_mlm_acc / (args.log_freq * divisor)
-                        loss_scale = amp._amp_state.loss_scalers[0]._loss_scale if args.fp16 else 1
+                        loss_scale = amp._amp_state.loss_scalers[0].loss_scale() if args.fp16 else 1
                         if is_main_process():
                             dllogger.log(step=(epoch, global_step, ), data={"average_loss": avg_loss,
                                                                             "step_loss": loss.item() * args.gradient_accumulation_steps / divisor,
