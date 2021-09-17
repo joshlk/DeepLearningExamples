@@ -29,7 +29,6 @@ import sys
 from io import open
 
 import torch
-import wandb
 from torch import nn
 from torch.nn import CrossEntropyLoss
 from torch.utils import checkpoint
@@ -899,12 +898,6 @@ class BertForPreTraining(BertPreTrainedModel):
         encoded_layers, pooled_output = self.bert(input_ids, token_type_ids, attention_mask)
         sequence_output = encoded_layers[-1]
         prediction_scores, seq_relationship_score = self.cls(sequence_output, pooled_output)
-
-        # Add wandb hooks to gradients of activations of classification heads
-        prediction_scores.register_hook(lambda grad: wandb.run.history.torch.log_tensor_stats(
-            grad, 'activation_gradients/prediction_scores'))
-        prediction_scores.register_hook(lambda grad: wandb.run.history.torch.log_tensor_stats(
-            grad, 'activation_gradients/seq_relationship_score'))
 
         return prediction_scores, seq_relationship_score
 

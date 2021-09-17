@@ -608,6 +608,11 @@ def main():
                     prediction_scores, seq_relationship_score = model(input_ids=input_ids, token_type_ids=segment_ids, attention_mask=input_mask)
                     loss, mlm_loss, nsp_loss = criterion(prediction_scores, seq_relationship_score, masked_lm_labels, next_sentence_labels)
 
+                    if training_steps % (args.log_freq * args.gradient_accumulation_steps) == 0 and using_wandb:
+                        # Add wandb hooks to gradients of activations of classification heads
+                        prediction_scores.register_hook(lambda grad: wandb.log({'activation_gradients/prediction_scores': grad}))
+                        seq_relationship_score.register_hook(lambda grad: wandb.log({'activation_gradients/seq_relationship_score': grad}))
+
                     if args.n_gpu > 1:
                         loss = loss.mean()  # mean() to average on multi-gpu.
                         mlm_loss = mlm_loss.mean()
