@@ -610,8 +610,8 @@ def main():
 
                     if training_steps % (args.log_freq * args.gradient_accumulation_steps) == 0 and using_wandb:
                         # Add wandb hooks to gradients of activations of classification heads
-                        prediction_scores.register_hook(lambda grad: wandb.log({'activation_gradients/prediction_scores': grad}))
-                        seq_relationship_score.register_hook(lambda grad: wandb.log({'activation_gradients/seq_relationship_score': grad}))
+                        prediction_scores.register_hook(lambda grad: print('GRAD1', grad)) #wandb.log({'activation_gradients/prediction_scores': grad.mean()}))
+                        seq_relationship_score.register_hook(lambda grad: print('GRAD1', grad)) #wandb.log({'activation_gradients/seq_relationship_score': grad}))
 
                     if args.n_gpu > 1:
                         loss = loss.mean()  # mean() to average on multi-gpu.
