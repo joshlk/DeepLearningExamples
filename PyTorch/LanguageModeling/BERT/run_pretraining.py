@@ -617,9 +617,9 @@ def main():
 
                     #    # Add wandb hooks to gradients of activations of classification heads
                     prediction_scores.register_hook(lambda grad: wandb.log(
-                        {'activation_gradients/prediction_scores': torch.nan_to_num(grad)}))
+                        {'activation_gradients/prediction_scores': np.nan_to_num(grad.cpu().detach().numpy())}))
                     seq_relationship_score.register_hook(lambda grad: wandb.log(
-                        {'activation_gradients/seq_relationship_score': torch.nan_to_num(grad)}))
+                        {'activation_gradients/seq_relationship_score': np.nan_to_num(grad.cpu().detach().numpy())}))
 
                     if args.n_gpu > 1:
                         loss = loss.mean()  # mean() to average on multi-gpu.
