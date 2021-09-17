@@ -518,7 +518,7 @@ def main():
         using_wandb = True
         config_ = {**vars(args), **vars(config)}
         wandb.init(project='nvidia-bert', config=config_)
-        wandb.watch(model, log="all", log_freq=10, log_graph=True)
+        wandb.watch(model, log="gradients")
 
     raw_train_start = None
     if args.do_train:
